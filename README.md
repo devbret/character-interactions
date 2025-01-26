@@ -1,5 +1,7 @@
 # Character Interactions
 
+![Map of direct character interactions from the original Frankenstein story.](https://hosting.photobucket.com/bbcfb0d4-be20-44a0-94dc-65bff8947cf2/70b921c9-7e90-4d1a-ad21-938be3c38370.png)
+
 As a brief summary, with this program, users rely on Python and D3.js to map direct conversations between different characters in a body of text.
 
 ## Installation Instructions
