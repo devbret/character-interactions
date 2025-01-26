@@ -4,17 +4,17 @@ As a brief summary, with this program, users rely on Python and D3.js to map dir
 
 ## Installation Instructions
 
-**Please Note:** *The following instructions assume that you are running Virtual Studio Code on a Linux Operating System. But may still be generally, otherwise applicable to Windows Operating Systems, as well as other IDEs on Linux.*
+**Please Note:** _The following instructions assume that you are running Virtual Studio Code on a Linux operating system. But may still be generally, otherwise applicable to Windows Operating Systems, as well as other IDEs on Linux._
 
-**Please Also Note:** *There are no guarantees with this program. And it will likely, at this stage of development, produce inaccuracies.* 
+**Please Also Note:** _There are no guarantees with this program. And it will likely, at this stage of development, produce inaccuracies._
 
 First, create a directory on your local machine, which will be home to all of the related files. You can name this folder whatever you would like to. Then download and save the Python and HTML files found within this GitHub repo, to your new directory.
 
 Open a terminal and make sure that you have the spaCy library installed.
 
-Your source .txt file, can contain any text. and it is best if that file is also located in your newly created directory. 
+Your source .txt file, can contain any text. And it is best if that file is also located in your newly created directory.
 
-Once you have all of files organized in the same directory, open the app.py file, and edit line 46 to reflect the name of your .txt file. Then save that change.
+Once you have all of files organized in the same directory, open the app.py file, and edit line 54 to reflect the name of your .txt file. Then save that change.
 
 Open a terminal from your new directory, assuming your are running Python 3+, and enter **python3 app.py**, and press enter. That will eventually produce a JSON file that will be used by the HTML file to visualize the information.
 
