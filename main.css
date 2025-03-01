@@ -1,0 +1,28 @@
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+  width: 8000px;
+}
+
+svg {
+  border: 1px solid black;
+}
+
+line {
+  stroke: #aaa;
+}
+
+circle {
+  fill: magenta;
+  stroke: #fff;
+  stroke-width: 4.3px;
+}
+
+text {
+  font-family: Arial, sans-serif;
+  font-size: 23px;
+  pointer-events: none;
+}
