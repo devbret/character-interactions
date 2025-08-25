@@ -1,6 +1,6 @@
-# Character Interactions
+# Visualizing Character Interactions
 
-![Map of direct character interactions from the original Frankenstein story.](https://hosting.photobucket.com/bbcfb0d4-be20-44a0-94dc-65bff8947cf2/70b921c9-7e90-4d1a-ad21-938be3c38370.png)
+![Map of direct character interactions from William Gibson's "Neuromancer".](https://hosting.photobucket.com/bbcfb0d4-be20-44a0-94dc-65bff8947cf2/f3fe822e-3498-42bb-beb5-a8e72da3de52.png)
 
 As a brief summary, with this program, users rely on Python and D3.js to map direct conversations between different characters in a body of text.
 
@@ -9,6 +9,8 @@ As a brief summary, with this program, users rely on Python and D3.js to map dir
 **Please Note:** _The following instructions assume that you are running Virtual Studio Code on a Linux operating system. But may still be generally, otherwise applicable to Windows Operating Systems, as well as other IDEs on Linux._
 
 **Please Also Note:** _There are no guarantees with this program. And it will likely, at this stage of development, produce inaccuracies._
+
+**Please Also, Also Note:** _When initially loaded, the network graph can be found off screen to the far right._
 
 First, create a directory on your local machine, which will be home to all of the related files. You can name this folder whatever you would like to. Then download and save the Python and HTML files found within this GitHub repo, to your new directory.
 

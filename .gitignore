@@ -1,5 +1,5 @@
 .vscode/
 venv/
+input/*.txt
 character_interactions.json
-text.txt
 character_analysis.log
