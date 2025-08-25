@@ -14,11 +14,16 @@ logging.basicConfig(
 )
 
 # --------------------------- config toggles ---------------------------
-PREFER_GPU = True                
-MODEL_CANDIDATES = ["en_core_web_trf", "en_core_web_sm"] 
-WINDOW_SENTENCES = 2             
-MIN_MENTIONS = 2                 
+PREFER_GPU = True
+MODEL_CANDIDATES = ["en_core_web_trf", "en_core_web_sm"]
+
+WINDOW_SENTENCES = 2
+MIN_MENTIONS = 2
 SIMILARITY_THRESHOLD = 0.93
+
+CHUNK_TARGET_CHARS = 200_000
+NLP_MAX_LENGTH_SAFETY = 2_000_000
+BATCH_SIZE = 4
 
 HONORIFICS = {"mr", "mrs", "ms", "miss", "dr", "sir", "lady", "lord", "madam", "madame", "prof", "professor"}
 
@@ -41,14 +46,24 @@ def load_nlp():
             logging.info("Using GPU for spaCy.")
         except Exception:
             logging.info("GPU not available; using CPU.")
+
+    last_err = None
     for name in MODEL_CANDIDATES:
         try:
             nlp = spacy.load(name)
+            if "parser" in nlp.pipe_names:
+                nlp.disable_pipes("parser")
+                logging.info("Disabled parser to reduce memory usage.")
+            if "senter" not in nlp.pipe_names and "sentencizer" not in nlp.pipe_names:
+                nlp.add_pipe("sentencizer")
+                logging.info("Added sentencizer.")
+            nlp.max_length = max(nlp.max_length, NLP_MAX_LENGTH_SAFETY)
             logging.info(f"Loaded spaCy model: {name}")
             return nlp
         except Exception as e:
+            last_err = e
             logging.warning(f"Could not load {name}: {e}")
-    raise RuntimeError("No suitable spaCy model found. Install one of: " + ", ".join(MODEL_CANDIDATES))
+    raise RuntimeError(f"No suitable spaCy model found. Last error: {last_err}")
 
 nlp = load_nlp()
 
@@ -75,6 +90,42 @@ def get_txt_files(input_dir: Path) -> List[Path]:
         logging.info(f"Found {len(files)} .txt file(s) in {input_dir}")
     return files
 
+# --------------------------- chunking ---------------------------
+def chunk_text(text: str, target_chars: int = CHUNK_TARGET_CHARS) -> List[str]:
+    paras = text.split("\n\n")
+    chunks: List[str] = []
+    buf: List[str] = []
+    buf_len = 0
+
+    def flush():
+        nonlocal buf, buf_len
+        if buf:
+            chunks.append("\n\n".join(buf))
+            buf = []
+            buf_len = 0
+
+    for p in paras:
+        plen = len(p)
+        if plen > target_chars:
+            flush()
+            start = 0
+            while start < plen:
+                end = min(start + target_chars, plen)
+                chunks.append(p[start:end])
+                start = end
+            continue
+
+        if buf_len + plen + (2 if buf else 0) <= target_chars:
+            buf.append(p)
+            buf_len += plen + (2 if buf else 0)
+        else:
+            flush()
+            buf.append(p)
+            buf_len = plen
+
+    flush()
+    return chunks
+
 # --------------------------- name normalization ---------------------------
 def strip_possessive(name: str) -> str:
     return name.rstrip().removesuffix("'s").removesuffix("’s").strip()
@@ -100,9 +151,7 @@ def normalize_name(raw: str) -> str:
 # --------------------------- extraction pass ---------------------------
 def extract_person_mentions(doc) -> List[Tuple[int, str]]:
     mentions = []
-    sent_starts = []
-    for i, s in enumerate(doc.sents):
-        sent_starts.append(s.start)
+    sent_starts = [s.start for s in doc.sents]
 
     def sent_index_of_token(tok_i: int) -> int:
         lo, hi = 0, len(sent_starts) - 1
@@ -198,6 +247,25 @@ def build_interaction_matrix_from_mentions(
     logging.info(f"Built interaction matrix of size {n}x{n}.")
     return M
 
+# --------------------------- streaming a file in waves ---------------------------
+def process_file_in_chunks(path: Path):
+    """
+    Yields (doc, last_sent_idx) for each chunk of the file, processed with nlp.pipe.
+    """
+    text = read_text_file(path)
+    chunks = chunk_text(text, CHUNK_TARGET_CHARS)
+    logging.info(f"{path.name}: split into {len(chunks)} chunk(s).")
+
+    for doc in nlp.pipe(chunks, batch_size=BATCH_SIZE):
+        if not doc.has_annotation("SENT_START"):
+            with doc.retokenize():
+                pass
+
+        last_sent_idx = -1
+        for i, _ in enumerate(doc.sents):
+            last_sent_idx = i
+        yield doc, last_sent_idx
+
 # --------------------------- main corpus analysis ---------------------------
 def analyze_corpus(input_dir: Path, output_file: Path) -> None:
     logging.info("Starting corpus analysis...")
@@ -206,31 +274,18 @@ def analyze_corpus(input_dir: Path, output_file: Path) -> None:
     if not txt_files:
         return
 
-    docs = []
     all_mentions: List[Tuple[int, str]] = []
     mention_counts: Dict[str, int] = {}
-    sentence_mentions_global: Dict[int, Set[str]] = {}
-
     global_sent_offset = 0
+
     for p in txt_files:
-        text = read_text_file(p)
-        doc = nlp(text)
-        docs.append(doc)
-
-        if not doc.has_annotation("SENT_START"):
-            with doc.retokenize():
-                pass
-
-        mentions = extract_person_mentions(doc)
-        for sidx, name in mentions:
-            sidx_g = sidx + global_sent_offset
-            all_mentions.append((sidx_g, name))
-            mention_counts[name] = mention_counts.get(name, 0) + 1
-
-        last_sent_idx = 0
-        for i, _ in enumerate(doc.sents):
-            last_sent_idx = i
-        global_sent_offset += last_sent_idx + 1
+        for doc, last_sent_idx in process_file_in_chunks(p):
+            mentions = extract_person_mentions(doc)
+            for sidx, name in mentions:
+                sidx_g = sidx + global_sent_offset
+                all_mentions.append((sidx_g, name))
+                mention_counts[name] = mention_counts.get(name, 0) + 1
+            global_sent_offset += (last_sent_idx + 1)
 
     if not all_mentions:
         logging.warning("No PERSON entities found in the corpus.")
