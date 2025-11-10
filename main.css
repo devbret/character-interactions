@@ -14,7 +14,7 @@ body {
   align-items: center;
   height: 100vh;
   margin: 0;
-  width: 8000px;
+  width: 100%;
 }
 
 svg {
@@ -35,4 +35,98 @@ text {
   font-family: Arial, sans-serif;
   font-size: 23px;
   pointer-events: none;
+}
+
+.ui-bar {
+  position: fixed;
+  left: 10px;
+  top: 10px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #ddd;
+  padding: 8px 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  font: 14px system-ui, sans-serif;
+  z-index: 20;
+}
+
+.ui-bar input[type="text"],
+.ui-bar input[type="number"] {
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.ui-bar button {
+  padding: 6px 10px;
+  border: 1px solid #bbb;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#khopMenu {
+  position: fixed;
+  z-index: 25;
+  display: none;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
+  width: 300px;
+  font: 14px system-ui, sans-serif;
+}
+
+#khopMenu .title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+#khopMenu .row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0px 0px;
+}
+
+#khopMenu button {
+  padding: 6px 10px;
+  border: 1px solid #bbb;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.node.dim {
+  opacity: 0.15;
+}
+
+.label.dim {
+  opacity: 0.1;
+}
+
+.link.dim {
+  opacity: 0.05;
+}
+
+.node.match {
+  stroke: #111;
+  stroke-width: 2.5px;
+}
+
+.label.match {
+  font-weight: 700;
+}
+
+.link.match {
+  stroke-opacity: 0.9;
+}
+
+.hidden {
+  display: none;
 }

@@ -6,14 +6,12 @@ from typing import List, Set, Dict, Tuple, Iterable
 
 import spacy
 
-# --------------------------- logging ---------------------------
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[logging.FileHandler("character_analysis.log"), logging.StreamHandler()],
 )
 
-# --------------------------- config toggles ---------------------------
 PREFER_GPU = True
 MODEL_CANDIDATES = ["en_core_web_trf", "en_core_web_sm"]
 
@@ -38,7 +36,6 @@ NICKNAMES = {
     "harry": "henry",
 }
 
-# --------------------------- spaCy load ---------------------------
 def load_nlp():
     if PREFER_GPU:
         try:
@@ -67,7 +64,6 @@ def load_nlp():
 
 nlp = load_nlp()
 
-# --------------------------- IO helpers ---------------------------
 def read_text_file(file_path: Path) -> str:
     if not file_path.is_file():
         logging.error(f"File not found: {file_path}")
@@ -90,7 +86,6 @@ def get_txt_files(input_dir: Path) -> List[Path]:
         logging.info(f"Found {len(files)} .txt file(s) in {input_dir}")
     return files
 
-# --------------------------- chunking ---------------------------
 def chunk_text(text: str, target_chars: int = CHUNK_TARGET_CHARS) -> List[str]:
     paras = text.split("\n\n")
     chunks: List[str] = []
@@ -126,7 +121,6 @@ def chunk_text(text: str, target_chars: int = CHUNK_TARGET_CHARS) -> List[str]:
     flush()
     return chunks
 
-# --------------------------- name normalization ---------------------------
 def strip_possessive(name: str) -> str:
     return name.rstrip().removesuffix("'s").removesuffix("’s").strip()
 
@@ -148,7 +142,6 @@ def normalize_name(raw: str) -> str:
     toks = normalize_tokens(raw.split())
     return " ".join(t.title() for t in toks)
 
-# --------------------------- extraction pass ---------------------------
 def extract_person_mentions(doc) -> List[Tuple[int, str]]:
     mentions = []
     sent_starts = [s.start for s in doc.sents]
@@ -171,7 +164,6 @@ def extract_person_mentions(doc) -> List[Tuple[int, str]]:
                 mentions.append((sidx, norm))
     return mentions
 
-# --------------------------- alias clustering ---------------------------
 def last_name(name: str) -> str:
     parts = name.split()
     return parts[-1] if parts else ""
@@ -211,7 +203,6 @@ def build_alias_map(mention_counts: Dict[str, int]) -> Dict[str, str]:
 
     return alias_to_canon
 
-# --------------------------- co-occurrence (windowed) ---------------------------
 def sliding_windows(items: List[int], k: int) -> Iterable[Tuple[int, int]]:
     if k <= 1:
         for s in items:
@@ -247,11 +238,7 @@ def build_interaction_matrix_from_mentions(
     logging.info(f"Built interaction matrix of size {n}x{n}.")
     return M
 
-# --------------------------- streaming a file in waves ---------------------------
 def process_file_in_chunks(path: Path):
-    """
-    Yields (doc, last_sent_idx) for each chunk of the file, processed with nlp.pipe.
-    """
     text = read_text_file(path)
     chunks = chunk_text(text, CHUNK_TARGET_CHARS)
     logging.info(f"{path.name}: split into {len(chunks)} chunk(s).")
@@ -266,7 +253,6 @@ def process_file_in_chunks(path: Path):
             last_sent_idx = i
         yield doc, last_sent_idx
 
-# --------------------------- main corpus analysis ---------------------------
 def analyze_corpus(input_dir: Path, output_file: Path) -> None:
     logging.info("Starting corpus analysis...")
 
@@ -317,7 +303,6 @@ def analyze_corpus(input_dir: Path, output_file: Path) -> None:
         logging.exception(f"Error writing JSON file {output_file}: {e}")
         raise
 
-# --------------------------- CLI ---------------------------
 if __name__ == "__main__":
     input_dir = Path("input")
     output_path = Path("character_interactions.json")
