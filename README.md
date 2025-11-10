@@ -1,4 +1,4 @@
-# Quantifying And Visualizing Character Relationships
+# Quantifying Character Relationships
 
 ![Map of direct character interactions from William Gibson's "Neuromancer".](https://hosting.photobucket.com/bbcfb0d4-be20-44a0-94dc-65bff8947cf2/abc09257-64f0-41f3-9fb0-8aeae6d2db01.png)
 
