@@ -1,33 +1,15 @@
-# Visualizing Character Interactions
+# Quantifying And Visualizing Character Relationships
 
-![Map of direct character interactions from William Gibson's "Neuromancer".](https://hosting.photobucket.com/bbcfb0d4-be20-44a0-94dc-65bff8947cf2/f3fe822e-3498-42bb-beb5-a8e72da3de52.png)
+![Map of direct character interactions from William Gibson's "Neuromancer".](https://hosting.photobucket.com/bbcfb0d4-be20-44a0-94dc-65bff8947cf2/abc09257-64f0-41f3-9fb0-8aeae6d2db01.png)
 
-As a brief summary, with this program, users rely on Python and D3.js to map direct conversations between different characters in a body of text.
+This app analyzes a body of text to automatically detect, merge and quantify character co-occurrences, then renders an interactive D3 network so you can visually explore relationships.
 
-## Installation Instructions
+## Overview
 
-**Please Note:** _The following instructions assume that you are running Virtual Studio Code on a Linux operating system. But may still be generally, otherwise applicable to Windows Operating Systems, as well as other IDEs on Linux._
+This program analyzes a collection of `.txt` files to automatically detect and map relationships between characters in a text corpus. It uses spaCy to find `PERSON` entities, normalizes their names and filters out rarely mentioned names. It then builds an alias map for merging different forms of the same character using sub-name checks, shared last names and fuzzy string similarity.
 
-**Please Also Note:** _There are no guarantees with this program. And it will likely, at this stage of development, produce inaccuracies._
+As it processes all files, the app tracks which characters appear in which sentences and uses a sliding sentence window to count how often pairs of characters co-occur, producing an interaction matrix that reflects how frequently each pair appears together. Finally, it writes a JSON file containing the list of canonical character names and the symmetric co-occurrence matrix.
 
-**Please Also, Also Note:** _When initially loaded, the network graph can be found off screen to the far right._
+The JavaScript frontend takes the `character_interactions.json` produced by the Python script and turns it into an interactive D3-based network visualization of relationships. It loads the list of characters and their co-occurrence matrix, builds nodes and weighted links and then uses a force-directed layout to position them.
 
-First, create a directory on your local machine, which will be home to all of the related files. You can name this folder whatever you would like to. Then download and save the Python and HTML files found within this GitHub repo, to your new directory.
-
-Open a terminal and make sure that you have the spaCy library installed.
-
-Your source .txt file, can contain any text. And it is best if that file is also located in your newly created directory.
-
-Once you have all of files organized in the same directory, open the app.py file, and edit line 54 to reflect the name of your .txt file. Then save that change.
-
-Open a terminal from your new directory, assuming your are running Python 3+, and enter **python3 app.py**, and press enter. That will eventually produce a JSON file that will be used by the HTML file to visualize the information.
-
-Open VS Code and start a local web development server. This should launch the index.html file, which will then read the local JSON file, which was just previous created. And if everything is working correctly, should be able to find a visualization on your screen. Although, the visualization might be off to the right of your screen, which can be found by scrolling horizontally.
-
-## Use Cases
-
-The biggest and most significant use case for this program is understanding if two named parties can directly communicated within a body of text. You can also observe degrees of separation with the associated visualization.
-
-## Other Notes
-
-This program is only designed to work with .txt text-based files. But can conceivably work with any amount of data. And was built for digesting entire books at once.
+The UI supports debounced searching that can either highlight matching characters or filter the graph down to them, while preserving a facet system that also lets you restrict the view by minimum degree and by k-hop distance from a chosen seed character. Clicking a node opens a k-hop control menu, and a separate ego view overlays a radial ego network.

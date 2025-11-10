@@ -1,1 +1,1 @@
-Place text files in this directory.
+Place your text files in this directory.

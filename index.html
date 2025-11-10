@@ -3,11 +3,139 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Character Interaction Graph</title>
+    <title>Character Interaction Graphs</title>
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <link rel="stylesheet" href="main.css" />
+    <meta name="author" content="Bret Bernhoft" />
+    <link
+      rel="icon"
+      href="https://hosting.photobucket.com/bbcfb0d4-be20-44a0-94dc-65bff8947cf2/ff4a3384-baa9-4bc2-94c9-6bff4e3d3ea0.png"
+      type="image/x-icon"
+    />
+    <meta
+      name="description"
+      content="Interactive visualizations of names and relationships found in Old Norse stories."
+    />
   </head>
   <body>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-4EQYBW87F5"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+
+      gtag("config", "G-4EQYBW87F5");
+    </script>
+
+    <div class="ui-bar">
+      <input id="searchInput" type="text" placeholder="Search names…" />
+      <label title="Only show matches (hides others)">
+        <input id="filterToggle" type="checkbox" />
+        Filter
+      </label>
+      <button id="clearBtn" type="button">Clear</button>
+      <button id="fitBtn" type="button">Fit</button>
+    </div>
+
+    <div id="khopMenu" role="dialog" aria-modal="false">
+      <div class="title" id="khopTitle">k-hop neighborhood</div>
+      <div class="row">
+        <label for="kHop">k =</label>
+        <input
+          id="kHop"
+          type="number"
+          min="0"
+          max="6"
+          value="0"
+          style="width: 4.5em"
+        />
+      </div>
+      <div class="row">
+        <button id="applyKHop" type="button">Apply</button>
+        <button id="clearKHop" type="button">Clear</button>
+        <button id="egoViewBtn" type="button">Radial</button>
+        <button id="closeKHop" type="button" style="margin-left: auto">
+          Close
+        </button>
+      </div>
+    </div>
+
+    <div
+      id="egoOverlay"
+      style="
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        background: rgba(0, 0, 0, 0.55);
+      "
+    >
+      <div
+        id="egoCard"
+        style="
+          position: absolute;
+          inset: 5% 4%;
+          background: #fff;
+          border-radius: 12px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        "
+      >
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-bottom: 1px solid #eee;
+          "
+        >
+          <div id="egoTitle" style="font: 600 14px system-ui">Ego Network</div>
+          <div
+            style="
+              margin-left: auto;
+              display: flex;
+              gap: 8px;
+              align-items: center;
+            "
+          >
+            <button
+              id="egoDownloadBtn"
+              style="
+                padding: 6px 10px;
+                border: 1px solid #bbb;
+                background: #fff;
+                border-radius: 6px;
+                cursor: pointer;
+              "
+            >
+              Download SVG
+            </button>
+            <button
+              id="egoCloseBtn"
+              style="
+                padding: 6px 10px;
+                border: 1px solid #bbb;
+                background: #fff;
+                border-radius: 6px;
+                cursor: pointer;
+              "
+            >
+              Close
+            </button>
+          </div>
+        </div>
+        <div id="egoCanvas" style="flex: 1; background: #fafafa"></div>
+      </div>
+    </div>
+
     <script src="main.js"></script>
   </body>
 </html>
