@@ -28,12 +28,12 @@
         dataLayer.push(arguments);
       }
       gtag("js", new Date());
-
       gtag("config", "G-4EQYBW87F5");
     </script>
 
     <div class="ui-bar">
       <input id="searchInput" type="text" placeholder="Search names…" />
+
       <label title="Only show matches (hides others)">
         <input id="filterToggle" type="checkbox" />
         Filter
@@ -51,6 +51,11 @@
         style="width: 5.5em"
       />
       <button id="applyNodeLimitBtn" type="button">Apply</button>
+
+      <label title="Toggle dark mode">
+        <input id="darkModeToggle" type="checkbox" />
+        Dark
+      </label>
 
       <button id="clearBtn" type="button">Clear</button>
       <button id="fitBtn" type="button">Fit</button>
@@ -79,74 +84,16 @@
       </div>
     </div>
 
-    <div
-      id="egoOverlay"
-      style="
-        display: none;
-        position: fixed;
-        inset: 0;
-        z-index: 1000;
-        background: rgba(0, 0, 0, 0.55);
-      "
-    >
-      <div
-        id="egoCard"
-        style="
-          position: absolute;
-          inset: 5% 4%;
-          background: #fff;
-          border-radius: 12px;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-        "
-      >
-        <div
-          style="
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 14px;
-            border-bottom: 1px solid #eee;
-          "
-        >
-          <div id="egoTitle" style="font: 600 14px system-ui">Ego Network</div>
-          <div
-            style="
-              margin-left: auto;
-              display: flex;
-              gap: 8px;
-              align-items: center;
-            "
-          >
-            <button
-              id="egoDownloadBtn"
-              style="
-                padding: 6px 10px;
-                border: 1px solid #bbb;
-                background: #fff;
-                border-radius: 6px;
-                cursor: pointer;
-              "
-            >
-              Download SVG
-            </button>
-            <button
-              id="egoCloseBtn"
-              style="
-                padding: 6px 10px;
-                border: 1px solid #bbb;
-                background: #fff;
-                border-radius: 6px;
-                cursor: pointer;
-              "
-            >
-              Close
-            </button>
+    <div id="egoOverlay">
+      <div id="egoCard">
+        <div id="egoHeader">
+          <div id="egoTitle">Ego Network</div>
+          <div id="egoActions">
+            <button id="egoDownloadBtn">Download SVG</button>
+            <button id="egoCloseBtn">Close</button>
           </div>
         </div>
-        <div id="egoCanvas" style="flex: 1; background: #fafafa"></div>
+        <div id="egoCanvas"></div>
       </div>
     </div>
 

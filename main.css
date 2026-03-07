@@ -1,11 +1,63 @@
+:root {
+  --bg: #ffffff;
+  --text: #111111;
+  --muted-text: #444444;
+  --panel-bg: rgba(255, 255, 255, 0.95);
+  --panel-border: #dddddd;
+  --panel-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --input-bg: #ffffff;
+  --input-border: #cccccc;
+  --button-bg: #ffffff;
+  --button-border: #bbbbbb;
+  --button-text: #111111;
+  --svg-border: #000000;
+  --tooltip-bg: #ffffff;
+  --tooltip-border: #dddddd;
+  --tooltip-text: #111111;
+  --khop-bg: #ffffff;
+  --khop-border: #dddddd;
+  --overlay-bg: rgba(0, 0, 0, 0.55);
+  --ego-card-bg: #ffffff;
+  --ego-card-border: #eeeeee;
+  --ego-canvas-bg: #fafafa;
+  --label-fill: #222222;
+  --label-stroke: #ffffff;
+  --link-stroke: #9aa0a6;
+  --ring-stroke: #e5e7eb;
+}
+
+body.dark-mode {
+  --bg: #111827;
+  --text: #f3f4f6;
+  --muted-text: #d1d5db;
+  --panel-bg: rgba(31, 41, 55, 0.96);
+  --panel-border: #374151;
+  --panel-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --input-bg: #1f2937;
+  --input-border: #4b5563;
+  --button-bg: #1f2937;
+  --button-border: #4b5563;
+  --button-text: #f3f4f6;
+  --svg-border: #4b5563;
+  --tooltip-bg: #1f2937;
+  --tooltip-border: #4b5563;
+  --tooltip-text: #f3f4f6;
+  --khop-bg: #1f2937;
+  --khop-border: #4b5563;
+  --overlay-bg: rgba(0, 0, 0, 0.72);
+  --ego-card-bg: #111827;
+  --ego-card-border: #374151;
+  --ego-canvas-bg: #0f172a;
+  --label-fill: #f3f4f6;
+  --label-stroke: #111827;
+  --link-stroke: #94a3b8;
+  --ring-stroke: #475569;
+}
+
 html,
 body {
   height: 100%;
   margin: 0;
-}
-
-svg {
-  display: block;
 }
 
 body {
@@ -13,12 +65,18 @@ body {
   justify-content: center;
   align-items: center;
   height: 100vh;
-  margin: 0;
   width: 100%;
+  background: var(--bg);
+  color: var(--text);
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 svg {
-  border: 1px solid black;
+  display: block;
+  border: 1px solid var(--svg-border);
+  background: var(--bg);
 }
 
 line {
@@ -45,28 +103,47 @@ text {
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid #ddd;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
   padding: 8px 10px;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--panel-shadow);
   font:
     14px system-ui,
     sans-serif;
   z-index: 20;
+  color: var(--text);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.ui-bar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text);
 }
 
 .ui-bar input[type="text"],
 .ui-bar input[type="number"] {
   padding: 6px 8px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--input-border);
   border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--text);
+}
+
+.ui-bar input::placeholder {
+  color: var(--muted-text);
 }
 
 .ui-bar button {
   padding: 6px 10px;
-  border: 1px solid #bbb;
-  background: #fff;
+  border: 1px solid var(--button-border);
+  background: var(--button-bg);
+  color: var(--button-text);
   border-radius: 6px;
   cursor: pointer;
 }
@@ -75,8 +152,8 @@ text {
   position: fixed;
   z-index: 25;
   display: none;
-  background: #fff;
-  border: 1px solid #ddd;
+  background: var(--khop-bg);
+  border: 1px solid var(--khop-border);
   border-radius: 8px;
   padding: 10px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
@@ -84,6 +161,7 @@ text {
   font:
     14px system-ui,
     sans-serif;
+  color: var(--text);
 }
 
 #khopMenu .title {
@@ -98,12 +176,74 @@ text {
   margin: 8px 0px 0px;
 }
 
+#khopMenu input[type="number"] {
+  padding: 6px 8px;
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--text);
+}
+
 #khopMenu button {
   padding: 6px 10px;
-  border: 1px solid #bbb;
-  background: #fff;
+  border: 1px solid var(--button-border);
+  background: var(--button-bg);
+  color: var(--button-text);
   border-radius: 6px;
   cursor: pointer;
+}
+
+#egoOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--overlay-bg);
+}
+
+#egoCard {
+  position: absolute;
+  inset: 5% 4%;
+  background: var(--ego-card-bg);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#egoHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ego-card-border);
+  color: var(--text);
+}
+
+#egoTitle {
+  font: 600 14px system-ui;
+}
+
+#egoActions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#egoActions button {
+  padding: 6px 10px;
+  border: 1px solid var(--button-border);
+  background: var(--button-bg);
+  color: var(--button-text);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#egoCanvas {
+  flex: 1;
+  background: var(--ego-canvas-bg);
 }
 
 .node.dim {
@@ -123,6 +263,10 @@ text {
   stroke-width: 2.5px;
 }
 
+body.dark-mode .node.match {
+  stroke: #f9fafb;
+}
+
 .label.match {
   font-weight: 700;
 }
@@ -133,10 +277,4 @@ text {
 
 .hidden {
   display: none;
-}
-
-.ui-bar label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
 }
