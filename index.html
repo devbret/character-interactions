@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -38,6 +38,20 @@
         <input id="filterToggle" type="checkbox" />
         Filter
       </label>
+
+      <label for="nodeLimitInput" title="Maximum number of visible nodes">
+        Nodes
+      </label>
+      <input
+        id="nodeLimitInput"
+        type="number"
+        min="1"
+        step="1"
+        value="15"
+        style="width: 5.5em"
+      />
+      <button id="applyNodeLimitBtn" type="button">Apply</button>
+
       <button id="clearBtn" type="button">Clear</button>
       <button id="fitBtn" type="button">Fit</button>
     </div>

@@ -1,15 +1,15 @@
 # Quantifying Character Relationships
 
-![Map of direct character interactions from William Gibson's "Neuromancer".](https://hosting.photobucket.com/bbcfb0d4-be20-44a0-94dc-65bff8947cf2/abc09257-64f0-41f3-9fb0-8aeae6d2db01.png)
+![Map of direct character interactions from William Gibson's "Neuromancer".](https://hosting.photobucket.com/bbcfb0d4-be20-44a0-94dc-65bff8947cf2/653a802f-d491-45db-a3a6-e35952a870c6.png)
 
-This app analyzes a body of text to automatically detect, merge and quantify character co-occurrences, then renders an interactive D3 network so you can visually explore relationships.
+Analyzes text files to extract characters, infer relationships using multiple linguistic signals and visualize the resulting network in an interactive D3 graph with filtering and node-limit controls to make large literary networks easier to explore.
 
 ## Overview
 
-This program analyzes a collection of `.txt` files to automatically detect and map relationships between characters in a text corpus. It uses spaCy to find `PERSON` entities, normalizes their names and filters out rarely mentioned names. It then builds an alias map for merging different forms of the same character using sub-name checks, shared last names and fuzzy string similarity.
+This application extracts `PERSON` entities, normalizes names, filters obvious false positives and merges aliases carefully. It can also incorporate optional coreference support and preserves richer structure by tracking character presence across sentences, paragraphs and scenes.
 
-As it processes all files, the app tracks which characters appear in which sentences and uses a sliding sentence window to count how often pairs of characters co-occur, producing an interaction matrix that reflects how frequently each pair appears together. Finally, it writes a JSON file containing the list of canonical character names and the symmetric co-occurrence matrix.
+The analysis builds multiple forms of relationship evidence, including sliding sentence-window co-mentions, same-paragraph and same-scene presence, dialogue-style proximity, dependency-based interaction cues and coreference-linked presence. The output JSON includes the character list and interaction matrix, as well as detailed `nodes` and `edges` data with metadata such as mentions, weighted degree, evidence breakdowns and confidence scores.
 
-The JavaScript frontend takes the `character_interactions.json` produced by the Python script and turns it into an interactive D3-based network visualization of relationships. It loads the list of characters and their co-occurrence matrix, builds nodes and weighted links and then uses a force-directed layout to position them.
+The JavaScript frontend turns `character_interactions.json` into an interactive D3 network graph and supporting ego-network views. It renders characters as nodes and their relationships as weighted links, while providing search, highlight, filtering, k-hop neighborhood controls, fit-to-screen behavior and a radial ego overlay with SVG download support.
 
-The UI supports debounced searching that can either highlight matching characters or filter the graph down to them, while preserving a facet system that also lets you restrict the view by minimum degree and by k-hop distance from a chosen seed character. Clicking a node opens a k-hop control menu, and a separate ego view overlays a radial ego network.
+To improve readability on dense corpora, the graph limits the default visible set to the top 15 nodes and includes a top-left interface control for increasing or decreasing how many nodes are shown. The UI also includes search and facet behavior, making it easier to explore large literary networks without overwhelming the screen.
