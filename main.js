@@ -12,7 +12,9 @@ let degreeMap,
 
 let inputEl, filterToggleEl;
 let nodeLimitInputEl, applyNodeLimitBtn;
+let darkModeToggleEl;
 let currentNodeLimit = 15;
+let tip;
 
 const Facet = { degMin: 0, seed: "", k: 0 };
 let facetNodeKeep = new Set();
@@ -59,6 +61,7 @@ fetch("character_interactions.json")
     filterToggleEl = document.getElementById("filterToggle");
     nodeLimitInputEl = document.getElementById("nodeLimitInput");
     applyNodeLimitBtn = document.getElementById("applyNodeLimitBtn");
+    darkModeToggleEl = document.getElementById("darkModeToggle");
 
     const clearBtn = document.getElementById("clearBtn");
     const fitBtn = document.getElementById("fitBtn");
@@ -69,8 +72,16 @@ fetch("character_interactions.json")
     egoCloseBtn = document.getElementById("egoCloseBtn");
     egoDownloadBtn = document.getElementById("egoDownloadBtn");
 
+    khopMenuEl = document.getElementById("khopMenu");
+    kInputEl = document.getElementById("kHop");
+    applyKHopBtn = document.getElementById("applyKHop");
+    clearKHopBtn = document.getElementById("clearKHop");
+    closeKHopBtn = document.getElementById("closeKHop");
+
     currentNodeLimit = Math.max(1, +nodeLimitInputEl.value || 15);
     nodeLimitInputEl.value = String(currentNodeLimit);
+
+    initDarkMode();
 
     applyNodeLimitBtn.addEventListener("click", () => {
       currentNodeLimit = Math.max(1, +nodeLimitInputEl.value || 15);
@@ -86,6 +97,10 @@ fetch("character_interactions.json")
       }
     });
 
+    darkModeToggleEl.addEventListener("change", () => {
+      setDarkMode(darkModeToggleEl.checked);
+    });
+
     egoViewBtn.addEventListener("click", () => {
       const kVal = Math.max(0, Math.min(8, +kInputEl.value || 0));
       if (!khopSeedId || kVal === 0) {
@@ -93,6 +108,7 @@ fetch("character_interactions.json")
       }
       showEgoOverlay(khopSeedId, Math.max(1, kVal));
     });
+
     egoCloseBtn.addEventListener("click", hideEgoOverlay);
     egoDownloadBtn.addEventListener("click", downloadEgoSVG);
 
@@ -105,37 +121,37 @@ fetch("character_interactions.json")
       }
       filterMode ? applyFilter(q) : applyHighlight(q);
     }, 120);
+
     inputEl.addEventListener("input", handleSearch);
     filterToggleEl.addEventListener("change", () => handleSearch());
+
     clearBtn.addEventListener("click", () => {
       inputEl.value = "";
       filterToggleEl.checked = false;
       clearSearch();
     });
-    fitBtn.addEventListener("click", () => fitToScreen(60));
 
-    khopMenuEl = document.getElementById("khopMenu");
-    kInputEl = document.getElementById("kHop");
-    applyKHopBtn = document.getElementById("applyKHop");
-    clearKHopBtn = document.getElementById("clearKHop");
-    closeKHopBtn = document.getElementById("closeKHop");
+    fitBtn.addEventListener("click", () => fitToScreen(60));
 
     applyKHopBtn.addEventListener("click", () => {
       Facet.k = Math.max(0, Math.min(6, +kInputEl.value || 0));
       if (khopSeedId) Facet.seed = khopSeedId;
       applyFacets();
     });
+
     clearKHopBtn.addEventListener("click", () => {
       Facet.k = 0;
       Facet.seed = "";
       kInputEl.value = "0";
       applyFacets();
     });
+
     closeKHopBtn.addEventListener("click", hideKHopMenu);
 
     document.addEventListener("click", (e) => {
-      if (!khopMenuEl.style.display || khopMenuEl.style.display === "none")
+      if (!khopMenuEl.style.display || khopMenuEl.style.display === "none") {
         return;
+      }
       const inside = khopMenuEl.contains(e.target);
       const clickedNode = e.target && e.target.tagName === "circle";
       if (!inside && !clickedNode) hideKHopMenu();
@@ -144,6 +160,47 @@ fetch("character_interactions.json")
     applyFacets();
   })
   .catch((error) => console.error("Error loading JSON data:", error));
+
+function initDarkMode() {
+  const saved = localStorage.getItem("characterGraphDarkMode");
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const enabled = saved === null ? prefersDark : saved === "true";
+  darkModeToggleEl.checked = enabled;
+  setDarkMode(enabled, false);
+}
+
+function setDarkMode(enabled, persist = true) {
+  document.body.classList.toggle("dark-mode", enabled);
+  if (persist) {
+    localStorage.setItem("characterGraphDarkMode", String(enabled));
+  }
+  updateGraphTheme();
+}
+
+function updateGraphTheme() {
+  if (!root || !nodesSel || !linksSel || !labelsSel) return;
+
+  const styles = getComputedStyle(document.body);
+  const bg = styles.getPropertyValue("--bg").trim();
+  const labelFill = styles.getPropertyValue("--label-fill").trim();
+  const labelStroke = styles.getPropertyValue("--label-stroke").trim();
+  const linkStroke = styles.getPropertyValue("--link-stroke").trim();
+  const tooltipBg = styles.getPropertyValue("--tooltip-bg").trim();
+  const tooltipBorder = styles.getPropertyValue("--tooltip-border").trim();
+  const tooltipText = styles.getPropertyValue("--tooltip-text").trim();
+
+  root.style("background", bg);
+
+  linksSel.attr("stroke", linkStroke);
+  labelsSel.attr("fill", labelFill).attr("stroke", labelStroke);
+
+  if (tip) {
+    tip
+      .style("background", tooltipBg)
+      .style("border", `1px solid ${tooltipBorder}`)
+      .style("color", tooltipText);
+  }
+}
 
 function createGraph(characters, matrix) {
   root = d3
@@ -165,10 +222,12 @@ function createGraph(characters, matrix) {
   const links = [];
   matrix.forEach((row, i) => {
     row.forEach((value, j) => {
-      if (value > 0)
+      if (value > 0) {
         links.push({ source: characters[i], target: characters[j], value });
+      }
     });
   });
+
   allNodes = nodes;
   allLinks = links;
 
@@ -185,6 +244,7 @@ function createGraph(characters, matrix) {
     .scaleSqrt()
     .domain([degExtent[0] || 1, degExtent[1] || 1])
     .range([6, 22]);
+
   const color = d3
     .scaleSequential(d3.interpolateTurbo)
     .domain([degExtent[0] || 0, degExtent[1] || 1]);
@@ -215,7 +275,10 @@ function createGraph(characters, matrix) {
     .append("path")
     .attr("class", "link")
     .attr("fill", "none")
-    .attr("stroke", "#9aa0a6")
+    .attr(
+      "stroke",
+      getComputedStyle(document.body).getPropertyValue("--link-stroke").trim(),
+    )
     .attr("stroke-opacity", 0.35)
     .attr("stroke-width", (d) => 1 + 2 * (d.value / maxWeight))
     .attr("marker-end", "url(#arrow)");
@@ -240,31 +303,38 @@ function createGraph(characters, matrix) {
     .attr("class", "label")
     .text((d) => d.id)
     .attr("font-size", 10)
-    .attr("fill", "#222")
-    .attr("stroke", "white")
+    .attr(
+      "fill",
+      getComputedStyle(document.body).getPropertyValue("--label-fill").trim(),
+    )
+    .attr(
+      "stroke",
+      getComputedStyle(document.body).getPropertyValue("--label-stroke").trim(),
+    )
     .attr("stroke-width", 3)
     .attr("paint-order", "stroke")
     .style("pointer-events", "none");
 
-  const tip = d3
+  tip = d3
     .select("body")
     .append("div")
     .attr("id", "tip")
     .style("position", "fixed")
     .style("pointer-events", "none")
     .style("opacity", 0)
-    .style("background", "#fff")
-    .style("border", "1px solid #ddd")
     .style("padding", "6px 8px")
     .style("border-radius", "6px")
     .style("box-shadow", "0 2px 8px rgba(0,0,0,.08)")
     .style("font", "12px system-ui");
+
+  updateGraphTheme();
 
   const neighbors = new Map(nodes.map((n) => [n.id, new Set()]));
   links.forEach((l) => {
     neighbors.get(l.source).add(l.target);
     neighbors.get(l.target).add(l.source);
   });
+
   const isNeighbor = (a, b) => a.id === b.id || neighbors.get(a.id)?.has(b.id);
 
   node
@@ -304,6 +374,7 @@ function createGraph(characters, matrix) {
     .scaleLinear()
     .domain(d3.extent(nodes, (d) => d.id.length))
     .range([0.45, 0.85]);
+
   function arcPath(d) {
     const x1 = d.source.x,
       y1 = d.source.y,
@@ -347,6 +418,7 @@ function createGraph(characters, matrix) {
   nodesSel = node;
   linksSel = linkPath;
   labelsSel = labels;
+
   return { root, container, zoom, nodesSel, linksSel, labelsSel, simulation };
 }
 
@@ -373,17 +445,20 @@ function fitToScreen(pad = 40) {
   if (!container) return;
   const bbox = container.node().getBBox();
   if (!bbox.width || !bbox.height) return;
-  const cx = bbox.x + bbox.width / 2,
-    cy = bbox.y + bbox.height / 2;
+
+  const cx = bbox.x + bbox.width / 2;
+  const cy = bbox.y + bbox.height / 2;
   const k = Math.min(
     width / (bbox.width + pad * 2),
     height / (bbox.height + pad * 2),
     1,
   );
+
   const transform = d3.zoomIdentity
     .translate(width / 2, height / 2)
     .scale(k)
     .translate(-cx, -cy);
+
   root.transition().duration(300).call(zoom.transform, transform);
 }
 
@@ -415,17 +490,21 @@ function kHopSet(seedId, k, adj) {
   if (!seedId || k <= 0) return null;
   const seen = new Set([seedId]);
   let frontier = [seedId];
+
   for (let step = 0; step < k; step++) {
     const next = [];
-    for (const v of frontier)
-      for (const u of adj.get(v) || [])
+    for (const v of frontier) {
+      for (const u of adj.get(v) || []) {
         if (!seen.has(u)) {
           seen.add(u);
           next.push(u);
         }
+      }
+    }
     if (!next.length) break;
     frontier = next;
   }
+
   return seen;
 }
 
@@ -433,6 +512,7 @@ function kHopBFS(seedId, k, adj) {
   const dist = new Map();
   dist.set(seedId, 0);
   let frontier = [seedId];
+
   for (let step = 1; step <= k; step++) {
     const next = [];
     for (const v of frontier) {
@@ -446,20 +526,24 @@ function kHopBFS(seedId, k, adj) {
     if (!next.length) break;
     frontier = next;
   }
+
   return dist;
 }
 
 function showKHopMenu(clientX, clientY, nodeId) {
   if (!khopMenuEl) return;
+
   document.getElementById("khopTitle").textContent = `k-hop from “${nodeId}”`;
   if (Facet.seed === nodeId) kInputEl.value = String(Facet.k || 0);
 
   const pad = 8;
-  const vw = window.innerWidth,
-    vh = window.innerHeight;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
   const rect = { w: 260, h: 140 };
-  let left = clientX + 12,
-    top = clientY + 12;
+
+  let left = clientX + 12;
+  let top = clientY + 12;
+
   if (left + rect.w + pad > vw) left = vw - rect.w - pad;
   if (top + rect.h + pad > vh) top = vh - rect.h - pad;
 
@@ -485,23 +569,27 @@ const applyFacets = debounce(() => {
   );
 
   let kKeep = null;
-  if (Facet.seed && Facet.k > 0)
+  if (Facet.seed && Facet.k > 0) {
     kKeep = kHopSet(Facet.seed, Facet.k, buildAdjacency());
+  }
 
   facetNodeKeep = new Set();
   for (const n of allNodes) {
     const keepTop = topNodeKeep.has(n.id);
     const keepDeg = degKeep.has(n.id);
     const keepK = kKeep ? kKeep.has(n.id) : true;
-    if (keepTop && keepDeg && keepK) facetNodeKeep.add(n.id);
+    if (keepTop && keepDeg && keepK) {
+      facetNodeKeep.add(n.id);
+    }
   }
 
   facetLinkKeep = new Set();
   for (const l of allLinks) {
     const s = typeof l.source === "object" ? l.source.id : l.source;
     const t = typeof l.target === "object" ? l.target.id : l.target;
-    if (facetNodeKeep.has(s) && facetNodeKeep.has(t))
+    if (facetNodeKeep.has(s) && facetNodeKeep.has(t)) {
       facetLinkKeep.add(`${s}→${t}`);
+    }
   }
 
   nodesSel.classed("hidden", (d) => !facetNodeKeep.has(d.id));
@@ -509,7 +597,6 @@ const applyFacets = debounce(() => {
   linksSel.classed("hidden", (l) => !facetLinkKeep.has(linkKey(l)));
 
   reapplySearchFromUI();
-
   fitToScreen(60);
 }, 50);
 
@@ -517,12 +604,15 @@ function applyHighlight(q) {
   const matches = new Set(
     allNodes.filter((n) => n.id.toLowerCase().includes(q)).map((n) => n.id),
   );
+
   nodesSel
     .classed("match", (d) => facetNodeKeep.has(d.id) && matches.has(d.id))
     .classed("dim", (d) => facetNodeKeep.has(d.id) && !matches.has(d.id));
+
   labelsSel
     .classed("match", (d) => facetNodeKeep.has(d.id) && matches.has(d.id))
     .classed("dim", (d) => facetNodeKeep.has(d.id) && !matches.has(d.id));
+
   linksSel
     .classed(
       "match",
@@ -542,24 +632,28 @@ function applyFilter(q) {
   const matches = new Set(
     allNodes.filter((n) => n.id.toLowerCase().includes(q)).map((n) => n.id),
   );
+
   nodesSel
     .classed("hidden", (d) => !(facetNodeKeep.has(d.id) && matches.has(d.id)))
     .classed("match", (d) => facetNodeKeep.has(d.id) && matches.has(d.id))
     .classed("dim", false);
+
   labelsSel
     .classed("hidden", (d) => !(facetNodeKeep.has(d.id) && matches.has(d.id)))
     .classed("match", (d) => facetNodeKeep.has(d.id) && matches.has(d.id))
     .classed("dim", false);
+
   const visibleMatched = new Set(
     allNodes
       .filter((n) => facetNodeKeep.has(n.id) && matches.has(n.id))
       .map((n) => n.id),
   );
+
   linksSel
     .classed("hidden", (l) => {
       if (!facetLinkKeep.has(linkKey(l))) return true;
-      const s = l.source.id,
-        t = l.target.id;
+      const s = l.source.id;
+      const t = l.target.id;
       return !(visibleMatched.has(s) || visibleMatched.has(t));
     })
     .classed(
@@ -569,6 +663,7 @@ function applyFilter(q) {
         (visibleMatched.has(l.source.id) || visibleMatched.has(l.target.id)),
     )
     .classed("dim", false);
+
   fitToScreen(60);
 }
 
@@ -613,8 +708,9 @@ function downloadEgoSVG(scale = 1) {
     el.setAttribute("font-size", (base * scale).toFixed(2));
 
     const sw = el.getAttribute("stroke-width");
-    if (sw)
+    if (sw) {
       el.setAttribute("stroke-width", (parseFloat(sw) * scale).toFixed(2));
+    }
   });
 
   const style = document.createElement("style");
@@ -627,6 +723,7 @@ function downloadEgoSVG(scale = 1) {
   const src = serializer.serializeToString(svg);
   const blob = new Blob([src], { type: "image/svg+xml;charset=utf-8" });
   const url = URL.createObjectURL(blob);
+
   const a = document.createElement("a");
   a.href = url;
   a.download = "ego-network.svg";
@@ -640,14 +737,17 @@ function renderEgoRadial(seedId, k) {
   d3.select("#egoCanvas").selectAll("*").remove();
 
   const adj = buildAdjacency();
-
   const dist = kHopBFS(seedId, k, adj);
-  if (!dist.has(seedId)) dist.set(seedId, 0);
+
+  if (!dist.has(seedId)) {
+    dist.set(seedId, 0);
+  }
 
   const nodesSub = allNodes.filter(
     (n) => dist.has(n.id) && facetNodeKeep.has(n.id),
   );
   const nodeSet = new Set(nodesSub.map((n) => n.id));
+
   const linksSub = allLinks.filter((l) => {
     const s = typeof l.source === "object" ? l.source.id : l.source;
     const t = typeof l.target === "object" ? l.target.id : l.target;
@@ -657,6 +757,7 @@ function renderEgoRadial(seedId, k) {
   const wrap = document.getElementById("egoCard");
   const W = wrap.clientWidth || window.innerWidth * 0.92;
   const H = (wrap.clientHeight || window.innerHeight * 0.9) - 44;
+
   const svg = d3
     .select("#egoCanvas")
     .append("svg")
@@ -664,13 +765,14 @@ function renderEgoRadial(seedId, k) {
     .attr("height", H);
 
   const g = svg.append("g");
+
   const zoomEgo = d3
     .zoom()
     .on("zoom", (ev) => g.attr("transform", ev.transform));
   svg.call(zoomEgo);
 
-  const cx = W / 2,
-    cy = H / 2;
+  const cx = W / 2;
+  const cy = H / 2;
   const rings = Math.max(1, k);
   const ringScale = 9.3;
   const ringGap = (ringScale * Math.min(W, H)) / (2 * (rings + 1));
@@ -685,6 +787,7 @@ function renderEgoRadial(seedId, k) {
     subDeg.set(s, (subDeg.get(s) || 0) + 1);
     subDeg.set(t, (subDeg.get(t) || 0) + 1);
   });
+
   byRing.forEach((arr) =>
     arr.sort((a, b) => (subDeg.get(b.id) || 0) - (subDeg.get(a.id) || 0)),
   );
@@ -694,6 +797,7 @@ function renderEgoRadial(seedId, k) {
     const R = r === 0 ? 0 : r * ringGap;
     const n = Math.max(1, arr.length);
     const angleStep = (2 * Math.PI) / n;
+
     arr.forEach((node, i) => {
       let x, y;
       if (r === 0) {
@@ -708,6 +812,11 @@ function renderEgoRadial(seedId, k) {
     });
   });
 
+  const styles = getComputedStyle(document.body);
+  const ringStroke = styles.getPropertyValue("--ring-stroke").trim();
+  const linkStroke = styles.getPropertyValue("--link-stroke").trim();
+  const labelFill = styles.getPropertyValue("--label-fill").trim();
+
   const ringsLayer = g.append("g");
   for (let r = 1; r <= k; r++) {
     ringsLayer
@@ -716,7 +825,7 @@ function renderEgoRadial(seedId, k) {
       .attr("cy", cy)
       .attr("r", r * ringGap)
       .attr("fill", "none")
-      .attr("stroke", "#e5e7eb")
+      .attr("stroke", ringStroke)
       .attr("stroke-dasharray", "3 4");
   }
 
@@ -742,7 +851,7 @@ function renderEgoRadial(seedId, k) {
       "y2",
       (d) => pos.get(typeof d.target === "object" ? d.target.id : d.target).y,
     )
-    .attr("stroke", "#9aa0a6")
+    .attr("stroke", linkStroke)
     .attr("stroke-opacity", 0.35)
     .attr("stroke-width", (d) => 1 + 2 * ((d.value || 1) / (maxWeight || 1)));
 
@@ -771,7 +880,7 @@ function renderEgoRadial(seedId, k) {
     .attr("y", (d) => pos.get(d.id).y + 4)
     .attr("text-anchor", (d) => (dist.get(d.id) === 0 ? "middle" : "start"))
     .attr("font-size", (d) => (dist.get(d.id) === 0 ? 13 : 10))
-    .attr("fill", "#111")
+    .attr("fill", labelFill)
     .text((d) => d.id);
 
   circles.filter((d) => dist.get(d.id) === 0).raise();
