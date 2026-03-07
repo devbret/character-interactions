@@ -11,6 +11,8 @@ let degreeMap,
   maxWeight = 1;
 
 let inputEl, filterToggleEl;
+let nodeLimitInputEl, applyNodeLimitBtn;
+let currentNodeLimit = 15;
 
 const Facet = { degMin: 0, seed: "", k: 0 };
 let facetNodeKeep = new Set();
@@ -55,6 +57,9 @@ fetch("character_interactions.json")
 
     inputEl = document.getElementById("searchInput");
     filterToggleEl = document.getElementById("filterToggle");
+    nodeLimitInputEl = document.getElementById("nodeLimitInput");
+    applyNodeLimitBtn = document.getElementById("applyNodeLimitBtn");
+
     const clearBtn = document.getElementById("clearBtn");
     const fitBtn = document.getElementById("fitBtn");
 
@@ -63,6 +68,23 @@ fetch("character_interactions.json")
     egoCanvasEl = document.getElementById("egoCanvas");
     egoCloseBtn = document.getElementById("egoCloseBtn");
     egoDownloadBtn = document.getElementById("egoDownloadBtn");
+
+    currentNodeLimit = Math.max(1, +nodeLimitInputEl.value || 15);
+    nodeLimitInputEl.value = String(currentNodeLimit);
+
+    applyNodeLimitBtn.addEventListener("click", () => {
+      currentNodeLimit = Math.max(1, +nodeLimitInputEl.value || 15);
+      nodeLimitInputEl.value = String(currentNodeLimit);
+      applyFacets();
+    });
+
+    nodeLimitInputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        currentNodeLimit = Math.max(1, +nodeLimitInputEl.value || 15);
+        nodeLimitInputEl.value = String(currentNodeLimit);
+        applyFacets();
+      }
+    });
 
     egoViewBtn.addEventListener("click", () => {
       const kVal = Math.max(0, Math.min(8, +kInputEl.value || 0));
@@ -251,7 +273,7 @@ function createGraph(characters, matrix) {
       labels.classed("dim", (n) => !isNeighbor(d, n));
       linkPath.classed(
         "dim",
-        (l) => l.source.id !== d.id && l.target.id !== d.id
+        (l) => l.source.id !== d.id && l.target.id !== d.id,
       );
       labels.filter((n) => n.id === d.id).raise();
       tip.style("opacity", 1);
@@ -301,18 +323,18 @@ function createGraph(characters, matrix) {
         .forceLink(links)
         .id((d) => d.id)
         .distance((d) => 120 + 240 * (1 - d.value / maxWeight) * 1.33)
-        .strength((d) => 0.2 + 0.6 * (d.value / maxWeight))
+        .strength((d) => 0.2 + 0.6 * (d.value / maxWeight)),
     )
     .force(
       "charge",
-      d3.forceManyBody().strength(-200).theta(0.9).distanceMax(930)
+      d3.forceManyBody().strength(-200).theta(0.9).distanceMax(930),
     )
     .force(
       "collide",
       d3
         .forceCollide()
         .radius((d) => rScale(degreeMap.get(d.id)) + 9)
-        .strength(0.9)
+        .strength(0.9),
     )
     .force("center", d3.forceCenter(width / 2, height / 2));
 
@@ -356,7 +378,7 @@ function fitToScreen(pad = 40) {
   const k = Math.min(
     width / (bbox.width + pad * 2),
     height / (bbox.height + pad * 2),
-    1
+    1,
   );
   const transform = d3.zoomIdentity
     .translate(width / 2, height / 2)
@@ -374,6 +396,19 @@ function buildAdjacency() {
     adj.get(t)?.add(s);
   }
   return adj;
+}
+
+function getTopNodeIdsByDegree(limit) {
+  return new Set(
+    [...allNodes]
+      .sort((a, b) => {
+        const degDiff = (degreeMap.get(b.id) || 0) - (degreeMap.get(a.id) || 0);
+        if (degDiff !== 0) return degDiff;
+        return a.id.localeCompare(b.id);
+      })
+      .slice(0, Math.max(1, limit))
+      .map((n) => n.id),
+  );
 }
 
 function kHopSet(seedId, k, adj) {
@@ -438,10 +473,15 @@ function hideKHopMenu() {
 }
 
 const applyFacets = debounce(() => {
+  const topNodeKeep = getTopNodeIdsByDegree(currentNodeLimit);
+
   const degKeep = new Set(
     allNodes
-      .filter((n) => (degreeMap.get(n.id) || 0) >= Facet.degMin)
-      .map((n) => n.id)
+      .filter(
+        (n) =>
+          topNodeKeep.has(n.id) && (degreeMap.get(n.id) || 0) >= Facet.degMin,
+      )
+      .map((n) => n.id),
   );
 
   let kKeep = null;
@@ -450,9 +490,10 @@ const applyFacets = debounce(() => {
 
   facetNodeKeep = new Set();
   for (const n of allNodes) {
+    const keepTop = topNodeKeep.has(n.id);
     const keepDeg = degKeep.has(n.id);
     const keepK = kKeep ? kKeep.has(n.id) : true;
-    if (keepDeg && keepK) facetNodeKeep.add(n.id);
+    if (keepTop && keepDeg && keepK) facetNodeKeep.add(n.id);
   }
 
   facetLinkKeep = new Set();
@@ -474,7 +515,7 @@ const applyFacets = debounce(() => {
 
 function applyHighlight(q) {
   const matches = new Set(
-    allNodes.filter((n) => n.id.toLowerCase().includes(q)).map((n) => n.id)
+    allNodes.filter((n) => n.id.toLowerCase().includes(q)).map((n) => n.id),
   );
   nodesSel
     .classed("match", (d) => facetNodeKeep.has(d.id) && matches.has(d.id))
@@ -487,19 +528,19 @@ function applyHighlight(q) {
       "match",
       (l) =>
         facetLinkKeep.has(linkKey(l)) &&
-        (matches.has(l.source.id) || matches.has(l.target.id))
+        (matches.has(l.source.id) || matches.has(l.target.id)),
     )
     .classed(
       "dim",
       (l) =>
         facetLinkKeep.has(linkKey(l)) &&
-        !(matches.has(l.source.id) || matches.has(l.target.id))
+        !(matches.has(l.source.id) || matches.has(l.target.id)),
     );
 }
 
 function applyFilter(q) {
   const matches = new Set(
-    allNodes.filter((n) => n.id.toLowerCase().includes(q)).map((n) => n.id)
+    allNodes.filter((n) => n.id.toLowerCase().includes(q)).map((n) => n.id),
   );
   nodesSel
     .classed("hidden", (d) => !(facetNodeKeep.has(d.id) && matches.has(d.id)))
@@ -512,7 +553,7 @@ function applyFilter(q) {
   const visibleMatched = new Set(
     allNodes
       .filter((n) => facetNodeKeep.has(n.id) && matches.has(n.id))
-      .map((n) => n.id)
+      .map((n) => n.id),
   );
   linksSel
     .classed("hidden", (l) => {
@@ -525,7 +566,7 @@ function applyFilter(q) {
       "match",
       (l) =>
         facetLinkKeep.has(linkKey(l)) &&
-        (visibleMatched.has(l.source.id) || visibleMatched.has(l.target.id))
+        (visibleMatched.has(l.source.id) || visibleMatched.has(l.target.id)),
     )
     .classed("dim", false);
   fitToScreen(60);
@@ -552,9 +593,8 @@ function showEgoOverlay(seedId, k) {
   egoOverlayEl.style.display = "block";
   const count = renderEgoRadial(seedId, k);
   const noun = count === 1 ? "node" : "nodes";
-  document.getElementById(
-    "egoTitle"
-  ).textContent = `Ego network for “${seedId}” (k=${k}, ${count} ${noun})`;
+  document.getElementById("egoTitle").textContent =
+    `Ego network for “${seedId}” (k=${k}, ${count} ${noun})`;
 }
 
 function downloadEgoSVG(scale = 1) {
@@ -604,7 +644,9 @@ function renderEgoRadial(seedId, k) {
   const dist = kHopBFS(seedId, k, adj);
   if (!dist.has(seedId)) dist.set(seedId, 0);
 
-  const nodesSub = allNodes.filter((n) => dist.has(n.id));
+  const nodesSub = allNodes.filter(
+    (n) => dist.has(n.id) && facetNodeKeep.has(n.id),
+  );
   const nodeSet = new Set(nodesSub.map((n) => n.id));
   const linksSub = allLinks.filter((l) => {
     const s = typeof l.source === "object" ? l.source.id : l.source;
@@ -644,7 +686,7 @@ function renderEgoRadial(seedId, k) {
     subDeg.set(t, (subDeg.get(t) || 0) + 1);
   });
   byRing.forEach((arr) =>
-    arr.sort((a, b) => (subDeg.get(b.id) || 0) - (subDeg.get(a.id) || 0))
+    arr.sort((a, b) => (subDeg.get(b.id) || 0) - (subDeg.get(a.id) || 0)),
   );
 
   const pos = new Map();
@@ -686,19 +728,19 @@ function renderEgoRadial(seedId, k) {
     .append("line")
     .attr(
       "x1",
-      (d) => pos.get(typeof d.source === "object" ? d.source.id : d.source).x
+      (d) => pos.get(typeof d.source === "object" ? d.source.id : d.source).x,
     )
     .attr(
       "y1",
-      (d) => pos.get(typeof d.source === "object" ? d.source.id : d.source).y
+      (d) => pos.get(typeof d.source === "object" ? d.source.id : d.source).y,
     )
     .attr(
       "x2",
-      (d) => pos.get(typeof d.target === "object" ? d.target.id : d.target).x
+      (d) => pos.get(typeof d.target === "object" ? d.target.id : d.target).x,
     )
     .attr(
       "y2",
-      (d) => pos.get(typeof d.target === "object" ? d.target.id : d.target).y
+      (d) => pos.get(typeof d.target === "object" ? d.target.id : d.target).y,
     )
     .attr("stroke", "#9aa0a6")
     .attr("stroke-opacity", 0.35)
@@ -713,7 +755,7 @@ function renderEgoRadial(seedId, k) {
     .attr("cx", (d) => pos.get(d.id).x)
     .attr("cy", (d) => pos.get(d.id).y)
     .attr("r", (d) =>
-      dist.get(d.id) === 0 ? 12 : 6 + Math.min(10, subDeg.get(d.id) || 0)
+      dist.get(d.id) === 0 ? 12 : 6 + Math.min(10, subDeg.get(d.id) || 0),
     )
     .attr("fill", (d) => (dist.get(d.id) === 0 ? "#111827" : "#2563eb"))
     .attr("stroke", "#fff")
