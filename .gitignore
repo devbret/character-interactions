@@ -3,3 +3,6 @@ venv/
 input/*.txt
 character_interactions.json
 character_analysis.log
+__pycache__/
+.pytest_cache/
+.ruff_cache/

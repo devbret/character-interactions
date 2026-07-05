@@ -1,6 +1,6 @@
 # Quantifying Character Relationships
 
-![Map of direct character interactions from William Gibson's "Neuromancer".](https://hosting.photobucket.com/bbcfb0d4-be20-44a0-94dc-65bff8947cf2/a7542eb2-1c70-42c2-9003-63c3dbecc7aa.png)
+![Map of direct character interactions from William Gibson's "Neuromancer".](https://hosting.photobucket.com/bbcfb0d4-be20-44a0-94dc-65bff8947cf2/6ba1896c-0d8b-47f6-a1d0-b6316ef8cee9.png)
 
 Analyzes text files to extract characters, infer relationships using multiple linguistic signals and visualize the resulting network in an interactive D3 graph with filtering and node-limit controls to make large literary networks easier to explore.
 
