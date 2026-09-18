@@ -27,7 +27,7 @@ def test_is_likely_valid_person_name():
 
 def test_strip_possessive():
     assert app.strip_possessive("Alice's") == "Alice"
-    assert app.strip_possessive("Alice’s") == "Alice"
+    assert app.strip_possessive("Alice\u2019s") == "Alice"
     assert app.strip_possessive("Alice") == "Alice"
 
 

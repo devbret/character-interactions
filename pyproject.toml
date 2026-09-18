@@ -1,3 +1,6 @@
 [tool.ruff]
 line-length = 120
 extend-exclude = ["venv"]
+
+[tool.ruff.lint.per-file-ignores]
+"app.py" = ["BLE001", "S112"]
