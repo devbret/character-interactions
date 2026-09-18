@@ -39,7 +39,7 @@ const debounce = (fn, ms = 200) => {
 
 const idOf = (endpoint) =>
   typeof endpoint === "object" ? endpoint.id : endpoint;
-const linkKey = (l) => `${idOf(l.source)}→${idOf(l.target)}`;
+const linkKey = (l) => `${idOf(l.source)}->${idOf(l.target)}`;
 const cssVar = (name) =>
   getComputedStyle(document.body).getPropertyValue(name).trim();
 
@@ -591,7 +591,7 @@ function kHopBFS(seedId, k, adj) {
 function showKHopMenu(clientX, clientY, nodeId) {
   if (!khopMenuEl) return;
 
-  document.getElementById("khopTitle").textContent = `k-hop from “${nodeId}”`;
+  document.getElementById("khopTitle").textContent = `k-hop from "${nodeId}"`;
   if (Facet.seed === nodeId) kInputEl.value = String(Facet.k || 0);
 
   const pad = 8;
@@ -730,7 +730,7 @@ function showEgoOverlay(seedId, k) {
   const count = renderEgoRadial(seedId, k);
   const noun = count === 1 ? "node" : "nodes";
   document.getElementById("egoTitle").textContent =
-    `Ego network for “${seedId}” (k=${k}, ${count} ${noun})`;
+    `Ego network for "${seedId}" (k=${k}, ${count} ${noun})`;
 }
 
 function downloadEgoSVG() {

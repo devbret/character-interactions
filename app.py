@@ -1,14 +1,16 @@
 import argparse
+import difflib
 import importlib
 import json
 import logging
-import difflib
 import re
-from collections import defaultdict, Counter
+from collections import Counter, defaultdict
 from pathlib import Path
-from typing import List, Set, Dict, Tuple
 
 import spacy
+
+logger = logging.getLogger(__name__)
+
 
 def setup_logging() -> None:
     logging.basicConfig(
@@ -115,9 +117,9 @@ def load_nlp():
     if PREFER_GPU:
         try:
             spacy.require_gpu()
-            logging.info("Using GPU for spaCy.")
+            logger.info("Using GPU for spaCy.")
         except Exception:
-            logging.info("GPU not available; using CPU.")
+            logger.info("GPU not available; using CPU.")
 
     last_err = None
     for name in MODEL_CANDIDATES:
@@ -126,22 +128,22 @@ def load_nlp():
 
             if not ENABLE_DEPENDENCY_INTERACTIONS and "parser" in nlp.pipe_names:
                 nlp.disable_pipes("parser")
-                logging.info("Disabled parser to reduce memory usage.")
+                logger.info("Disabled parser to reduce memory usage.")
 
             if "senter" not in nlp.pipe_names and "sentencizer" not in nlp.pipe_names:
                 nlp.add_pipe("sentencizer")
-                logging.info("Added sentencizer.")
+                logger.info("Added sentencizer.")
 
             if ENABLE_COREF:
                 maybe_add_coref(nlp)
 
             nlp.max_length = max(nlp.max_length, NLP_MAX_LENGTH_SAFETY)
-            logging.info(f"Loaded spaCy model: {name}")
-            logging.info(f"Active pipes: {nlp.pipe_names}")
+            logger.info(f"Loaded spaCy model: {name}")
+            logger.info(f"Active pipes: {nlp.pipe_names}")
             return nlp
         except Exception as e:
             last_err = e
-            logging.warning(f"Could not load {name}: {e}")
+            logger.warning(f"Could not load {name}: {e}")
     raise RuntimeError(f"No suitable spaCy model found. Last error: {last_err}")
 
 def maybe_add_coref(nlp):
@@ -151,15 +153,15 @@ def maybe_add_coref(nlp):
                 importlib.import_module("coreferee")
                 if "coreferee" not in nlp.pipe_names:
                     nlp.add_pipe("coreferee")
-                    logging.info("Enabled coreferee coreference resolution.")
+                    logger.info("Enabled coreferee coreference resolution.")
                 return
             elif coref_name not in nlp.pipe_names:
                 nlp.add_pipe(coref_name)
-                logging.info(f"Enabled optional coreference component: {coref_name}")
+                logger.info(f"Enabled optional coreference component: {coref_name}")
                 return
         except Exception as e:
-            logging.info(f"Coreference component {coref_name} unavailable: {e}")
-    logging.info("No coreference component enabled; proceeding without coreference.")
+            logger.info(f"Coreference component {coref_name} unavailable: {e}")
+    logger.info("No coreference component enabled; proceeding without coreference.")
 
 nlp = None
 
@@ -171,30 +173,30 @@ def get_nlp():
 
 def read_text_file(file_path: Path) -> str:
     if not file_path.is_file():
-        logging.error(f"File not found: {file_path}")
+        logger.error(f"File not found: {file_path}")
         raise FileNotFoundError(f"File not found: {file_path}")
     try:
         text = file_path.read_text(encoding="utf-8")
-        logging.info(f"Successfully read file: {file_path}")
+        logger.info(f"Successfully read file: {file_path}")
         return text
-    except Exception as e:
-        logging.exception(f"Error reading file {file_path}: {e}")
+    except Exception:
+        logger.exception(f"Error reading file {file_path}")
         raise
 
-def get_txt_files(input_dir: Path) -> List[Path]:
+def get_txt_files(input_dir: Path) -> list[Path]:
     if not input_dir.exists() or not input_dir.is_dir():
         raise NotADirectoryError(f"Input directory does not exist or is not a directory: {input_dir}")
     files = sorted([p for p in input_dir.iterdir() if p.is_file() and p.suffix.lower() == ".txt"])
     if not files:
-        logging.warning(f"No .txt files found in {input_dir}")
+        logger.warning(f"No .txt files found in {input_dir}")
     else:
-        logging.info(f"Found {len(files)} .txt file(s) in {input_dir}")
+        logger.info(f"Found {len(files)} .txt file(s) in {input_dir}")
     return files
 
-def chunk_text(text: str, target_chars: int = CHUNK_TARGET_CHARS) -> List[str]:
+def chunk_text(text: str, target_chars: int = CHUNK_TARGET_CHARS) -> list[str]:
     paras = text.split("\n\n")
-    chunks: List[str] = []
-    buf: List[str] = []
+    chunks: list[str] = []
+    buf: list[str] = []
     buf_len = 0
 
     def flush():
@@ -227,13 +229,13 @@ def chunk_text(text: str, target_chars: int = CHUNK_TARGET_CHARS) -> List[str]:
     return chunks
 
 def strip_possessive(name: str) -> str:
-    return name.rstrip().removesuffix("'s").removesuffix("’s").strip()
+    return name.rstrip().removesuffix("'s").removesuffix("\u2019s").strip()
 
-def normalize_tokens(tokens: List[str]) -> List[str]:
+def normalize_tokens(tokens: list[str]) -> list[str]:
     out = []
     for t in tokens:
-        t0 = "".join([ch for ch in t if ch.isalpha() or ch in "-’'"])
-        t0 = t0.strip("'’").lower()
+        t0 = "".join([ch for ch in t if ch.isalpha() or ch in "-\u2019'"])
+        t0 = t0.strip("'\u2019").lower()
         if not t0:
             continue
         if t0 in HONORIFICS:
@@ -258,11 +260,9 @@ def is_likely_valid_person_name(name: str) -> bool:
         p = parts[0]
         if len(p) < 3:
             return False
-    if any(ch.isdigit() for ch in name):
-        return False
-    return True
+    return not any(ch.isdigit() for ch in name)
 
-def sent_index_of_token(tok_i: int, sent_starts: List[int]) -> int:
+def sent_index_of_token(tok_i: int, sent_starts: list[int]) -> int:
     lo, hi = 0, len(sent_starts) - 1
     while lo <= hi:
         mid = (lo + hi) // 2
@@ -272,17 +272,17 @@ def sent_index_of_token(tok_i: int, sent_starts: List[int]) -> int:
             hi = mid - 1
     return hi
 
-def paragraph_index_of_char(span_start_char: int, para_spans: List[Tuple[int, int]]) -> int:
+def paragraph_index_of_char(span_start_char: int, para_spans: list[tuple[int, int]]) -> int:
     for i, (start, end) in enumerate(para_spans):
         if start <= span_start_char < end:
             return i
     return max(0, len(para_spans) - 1)
 
-def scene_index_of_paragraph(para_idx: int, scene_map: Dict[int, int]) -> int:
+def scene_index_of_paragraph(para_idx: int, scene_map: dict[int, int]) -> int:
     return scene_map.get(para_idx, 0)
 
-def compute_paragraph_spans(text: str) -> List[Tuple[int, int]]:
-    spans: List[Tuple[int, int]] = []
+def compute_paragraph_spans(text: str) -> list[tuple[int, int]]:
+    spans: list[tuple[int, int]] = []
     for m in re.finditer(r"(.*?)(?:\n\s*\n|$)", text, flags=re.DOTALL):
         s, e = m.span(1)
         if s == e:
@@ -290,8 +290,8 @@ def compute_paragraph_spans(text: str) -> List[Tuple[int, int]]:
         spans.append((s, e))
     return spans
 
-def compute_scene_map(text: str, para_spans: List[Tuple[int, int]]) -> Dict[int, int]:
-    scene_map: Dict[int, int] = {}
+def compute_scene_map(text: str, para_spans: list[tuple[int, int]]) -> dict[int, int]:
+    scene_map: dict[int, int] = {}
     current_scene = 0
     last_para_end = None
     consecutive_short_breaks = 0
@@ -313,7 +313,7 @@ def compute_scene_map(text: str, para_spans: List[Tuple[int, int]]) -> Dict[int,
 
     return scene_map
 
-def extract_person_mentions(doc, para_spans: List[Tuple[int, int]], scene_map: Dict[int, int]) -> List[Dict]:
+def extract_person_mentions(doc, para_spans: list[tuple[int, int]], scene_map: dict[int, int]) -> list[dict]:
     mentions = []
     sent_starts = [s.start for s in doc.sents]
 
@@ -341,17 +341,17 @@ def extract_person_mentions(doc, para_spans: List[Tuple[int, int]], scene_map: D
         })
     return mentions
 
-def build_local_entity_lookup(mentions: List[Dict]) -> Dict[Tuple[int, int], str]:
+def build_local_entity_lookup(mentions: list[dict]) -> dict[tuple[int, int], str]:
     lookup = {}
     for m in mentions:
         lookup[(m["start"], m["end"])] = m["name"]
     return lookup
 
-def get_coref_mentions(doc, mentions: List[Dict], para_spans: List[Tuple[int, int]], scene_map: Dict[int, int]) -> List[Dict]:
+def get_coref_mentions(doc, mentions: list[dict], para_spans: list[tuple[int, int]], scene_map: dict[int, int]) -> list[dict]:
     if not ENABLE_COREF:
         return []
 
-    coref_mentions: List[Dict] = []
+    coref_mentions: list[dict] = []
     sent_starts = [s.start for s in doc.sents]
     entity_lookup = build_local_entity_lookup(mentions)
 
@@ -398,34 +398,34 @@ def get_coref_mentions(doc, mentions: List[Dict], para_spans: List[Tuple[int, in
                     })
             return coref_mentions
     except Exception as e:
-        logging.info(f"coreferee-style extraction skipped: {e}")
+        logger.info(f"coreferee-style extraction skipped: {e}")
 
     return coref_mentions
 
-def nickname_normalized_parts(name: str) -> List[str]:
+def nickname_normalized_parts(name: str) -> list[str]:
     return [NICKNAMES.get(p.lower(), p.lower()) for p in name.split()]
 
-def jaccard_similarity(a: Set[str], b: Set[str]) -> float:
+def jaccard_similarity(a: set[str], b: set[str]) -> float:
     if not a or not b:
         return 0.0
     inter = len(a & b)
     union = len(a | b)
     return inter / union if union else 0.0
 
-def build_name_contexts(mentions: List[Dict]) -> Dict[str, Set[str]]:
-    contexts: Dict[str, Set[str]] = defaultdict(set)
-    by_paragraph: Dict[int, Set[str]] = defaultdict(set)
+def build_name_contexts(mentions: list[dict]) -> dict[str, set[str]]:
+    contexts: dict[str, set[str]] = defaultdict(set)
+    by_paragraph: dict[int, set[str]] = defaultdict(set)
 
     for m in mentions:
         by_paragraph[m["paragraph"]].add(m["name"])
 
-    for _, names in by_paragraph.items():
+    for names in by_paragraph.values():
         for n in names:
             contexts[n].update(x for x in names if x != n)
 
     return contexts
 
-def should_merge_name_pair(a: str, b: str, name_contexts: Dict[str, Set[str]]) -> bool:
+def should_merge_name_pair(a: str, b: str, name_contexts: dict[str, set[str]]) -> bool:
     if a == b:
         return True
 
@@ -446,9 +446,12 @@ def should_merge_name_pair(a: str, b: str, name_contexts: Dict[str, Set[str]]) -
     if a_last == b_last and a_first_n == b_first_n:
         return True
 
-    if a_first_n == b_first_n and (len(a_nick) != len(b_nick)):
-        if jaccard_similarity(name_contexts.get(a, set()), name_contexts.get(b, set())) >= CONTEXT_SIMILARITY_THRESHOLD:
-            return True
+    if (
+        a_first_n == b_first_n
+        and len(a_nick) != len(b_nick)
+        and jaccard_similarity(name_contexts.get(a, set()), name_contexts.get(b, set())) >= CONTEXT_SIMILARITY_THRESHOLD
+    ):
+        return True
 
     ratio = difflib.SequenceMatcher(None, " ".join(a_nick), " ".join(b_nick)).ratio()
     if ratio >= SIMILARITY_THRESHOLD:
@@ -459,7 +462,7 @@ def should_merge_name_pair(a: str, b: str, name_contexts: Dict[str, Set[str]]) -
 
     return False
 
-def choose_canonical_name(a: str, b: str, mention_counts: Dict[str, int]) -> str:
+def choose_canonical_name(a: str, b: str, mention_counts: dict[str, int]) -> str:
     ca = mention_counts.get(a, 0)
     cb = mention_counts.get(b, 0)
     a_words = len(a.split())
@@ -479,7 +482,7 @@ def choose_canonical_name(a: str, b: str, mention_counts: Dict[str, int]) -> str
         return a if len(a) > len(b) else b
     return min(a, b)
 
-def build_alias_map(mention_counts: Dict[str, int], name_contexts: Dict[str, Set[str]]) -> Dict[str, str]:
+def build_alias_map(mention_counts: dict[str, int], name_contexts: dict[str, set[str]]) -> dict[str, str]:
     names = sorted(mention_counts.keys(), key=lambda n: (-mention_counts[n], -len(n), n))
     parent = {n: n for n in names}
 
@@ -497,12 +500,12 @@ def build_alias_map(mention_counts: Dict[str, int], name_contexts: Dict[str, Set
         other = rb if canonical == ra else ra
         parent[other] = canonical
 
-    buckets: Dict[str, List[str]] = defaultdict(list)
+    buckets: dict[str, list[str]] = defaultdict(list)
     for name in names:
         for part in set(nickname_normalized_parts(name)):
             buckets[part].append(name)
 
-    compared: Set[Tuple[str, str]] = set()
+    compared: set[tuple[str, str]] = set()
     for bucket in buckets.values():
         for i, name in enumerate(bucket):
             for other in bucket[i + 1:]:
@@ -516,7 +519,7 @@ def build_alias_map(mention_counts: Dict[str, int], name_contexts: Dict[str, Set
     alias_to_canon = {n: find(n) for n in names}
     return alias_to_canon
 
-def add_pair_weight(edge_evidence: Dict[Tuple[str, str], Counter], a: str, b: str, key: str, amount: int = 1) -> None:
+def add_pair_weight(edge_evidence: dict[tuple[str, str], Counter], a: str, b: str, key: str, amount: int = 1) -> None:
     if a == b:
         return
     pair = tuple(sorted((a, b)))
@@ -530,16 +533,16 @@ def edge_confidence(evidence: Counter) -> float:
     return round(1.0 - miss, 3)
 
 def build_interaction_evidence(
-    sentence_mentions: Dict[int, Set[str]],
-    paragraph_mentions: Dict[int, Set[str]],
-    scene_mentions: Dict[int, Set[str]],
-) -> Dict[Tuple[str, str], Counter]:
-    edge_evidence: Dict[Tuple[str, str], Counter] = defaultdict(Counter)
+    sentence_mentions: dict[int, set[str]],
+    paragraph_mentions: dict[int, set[str]],
+    scene_mentions: dict[int, set[str]],
+) -> dict[tuple[str, str], Counter]:
+    edge_evidence: dict[tuple[str, str], Counter] = defaultdict(Counter)
 
     sidxs = sorted(sentence_mentions.keys())
     for idx, start in enumerate(sidxs):
         window_end = start + WINDOW_SENTENCES - 1
-        window_chars: Set[str] = set()
+        window_chars: set[str] = set()
         k = idx
         while k < len(sidxs) and sidxs[k] <= window_end:
             window_chars.update(sentence_mentions[sidxs[k]])
@@ -578,7 +581,7 @@ def collect_dialogue_sentence_names(doc) -> Counter:
 
     for sent in doc.sents:
         sent_text = sent.text
-        if '"' not in sent_text and "“" not in sent_text and "”" not in sent_text:
+        if '"' not in sent_text and "\u201c" not in sent_text and "\u201d" not in sent_text:
             continue
 
         names = set()
@@ -598,7 +601,7 @@ def collect_dependency_raw_pairs(doc) -> Counter:
     if not ENABLE_DEPENDENCY_INTERACTIONS or "parser" not in get_nlp().pipe_names:
         return raw_pairs
 
-    token_name_map: Dict[int, str] = {}
+    token_name_map: dict[int, str] = {}
     for ent in doc.ents:
         if ent.label_ != "PERSON":
             continue
@@ -633,7 +636,7 @@ def collect_dependency_raw_pairs(doc) -> Counter:
 
     return raw_pairs
 
-def collect_person_names_from_subtree(tok, token_name_map: Dict[int, str]) -> Set[str]:
+def collect_person_names_from_subtree(tok, token_name_map: dict[int, str]) -> set[str]:
     found = set()
     for t in tok.subtree:
         if t.i in token_name_map:
@@ -642,11 +645,11 @@ def collect_person_names_from_subtree(tok, token_name_map: Dict[int, str]) -> Se
 
 def compute_chunk_layout(
     text: str,
-    para_spans: List[Tuple[int, int]],
-    chunks: List[str],
-) -> Tuple[List[List[Tuple[int, int]]], List[List[int]]]:
-    chunk_para_slices: List[List[Tuple[int, int]]] = []
-    chunk_para_indices: List[List[int]] = []
+    para_spans: list[tuple[int, int]],
+    chunks: list[str],
+) -> tuple[list[list[tuple[int, int]]], list[list[int]]]:
+    chunk_para_slices: list[list[tuple[int, int]]] = []
+    chunk_para_indices: list[list[int]] = []
     current_char = 0
     para_cursor = 0
 
@@ -657,8 +660,8 @@ def compute_chunk_layout(
         chunk_end = chunk_start + len(chunk)
         current_char = chunk_end
 
-        local_spans: List[Tuple[int, int]] = []
-        local_indices: List[int] = []
+        local_spans: list[tuple[int, int]] = []
+        local_indices: list[int] = []
         while para_cursor < len(para_spans):
             pstart, pend = para_spans[para_cursor]
             if pstart >= chunk_end:
@@ -677,14 +680,14 @@ def compute_chunk_layout(
     return chunk_para_slices, chunk_para_indices
 
 def analyze_corpus(input_dir: Path, output_file: Path) -> None:
-    logging.info("Starting corpus analysis...")
+    logger.info("Starting corpus analysis...")
 
     txt_files = get_txt_files(input_dir)
     if not txt_files:
         return
 
-    all_mentions: List[Dict] = []
-    mention_counts: Dict[str, int] = {}
+    all_mentions: list[dict] = []
+    mention_counts: dict[str, int] = {}
     dialogue_sentence_sets: Counter = Counter()
     dependency_raw_pairs: Counter = Counter()
     global_sent_offset = 0
@@ -696,7 +699,7 @@ def analyze_corpus(input_dir: Path, output_file: Path) -> None:
         para_spans = compute_paragraph_spans(text)
         scene_map = compute_scene_map(text, para_spans)
         chunks = chunk_text(text, CHUNK_TARGET_CHARS)
-        logging.info(f"{p.name}: split into {len(chunks)} chunk(s).")
+        logger.info(f"{p.name}: split into {len(chunks)} chunk(s).")
         chunk_para_slices, chunk_para_indices = compute_chunk_layout(text, para_spans, chunks)
 
         docs = get_nlp().pipe(chunks, batch_size=BATCH_SIZE)
@@ -729,7 +732,7 @@ def analyze_corpus(input_dir: Path, output_file: Path) -> None:
         global_scene_offset += (max(scene_map.values()) + 1) if scene_map else 1
 
     if not all_mentions:
-        logging.warning("No PERSON entities found in the corpus.")
+        logger.warning("No PERSON entities found in the corpus.")
         return
 
     mention_counts = {
@@ -737,31 +740,31 @@ def analyze_corpus(input_dir: Path, output_file: Path) -> None:
         if v >= MIN_MENTIONS or (len(k.split()) > 1 and v >= 1)
     }
     if not mention_counts:
-        logging.warning(f"All names filtered out by MIN_MENTIONS={MIN_MENTIONS}. Lower the threshold?")
+        logger.warning(f"All names filtered out by MIN_MENTIONS={MIN_MENTIONS}. Lower the threshold?")
         return
 
     base_mentions_for_context = [m for m in all_mentions if m["name"] in mention_counts]
     name_contexts = build_name_contexts(base_mentions_for_context)
     alias_to_canon = build_alias_map(mention_counts, name_contexts)
-    canonicals = sorted({alias_to_canon[a] for a in mention_counts.keys()})
-    logging.info(f"Merged to {len(canonicals)} canonical character(s).")
+    canonicals = sorted({alias_to_canon[a] for a in mention_counts})
+    logger.info(f"Merged to {len(canonicals)} canonical character(s).")
 
-    aliases: Dict[str, List[str]] = defaultdict(list)
+    aliases: dict[str, list[str]] = defaultdict(list)
     for name, canon in alias_to_canon.items():
         if name != canon:
             aliases[canon].append(name)
     for names in aliases.values():
         names.sort()
 
-    sentence_mentions: Dict[int, Set[str]] = {}
-    paragraph_mentions: Dict[int, Set[str]] = {}
-    scene_mentions: Dict[int, Set[str]] = {}
+    sentence_mentions: dict[int, set[str]] = {}
+    paragraph_mentions: dict[int, set[str]] = {}
+    scene_mentions: dict[int, set[str]] = {}
 
     node_mentions = Counter()
     node_named_mentions = Counter()
     node_coref_mentions = Counter()
-    node_paragraphs: Dict[str, Set[int]] = defaultdict(set)
-    node_scenes: Dict[str, Set[int]] = defaultdict(set)
+    node_paragraphs: dict[str, set[int]] = defaultdict(set)
+    node_scenes: dict[str, set[int]] = defaultdict(set)
 
     for m in all_mentions:
         raw = m["name"]
@@ -806,7 +809,7 @@ def analyze_corpus(input_dir: Path, output_file: Path) -> None:
             if other != canon:
                 add_pair_weight(edge_evidence, canon, other, "coref_linked_presence", 1)
 
-    edge_scores: Dict[Tuple[str, str], int] = {}
+    edge_scores: dict[tuple[str, str], int] = {}
     for pair, evidence in edge_evidence.items():
         score = 0.0
         for key, amount in evidence.items():
@@ -814,7 +817,7 @@ def analyze_corpus(input_dir: Path, output_file: Path) -> None:
         edge_scores[pair] = max(1, round(score))
 
     nodes = []
-    neighbor_map: Dict[str, Set[str]] = defaultdict(set)
+    neighbor_map: dict[str, set[str]] = defaultdict(set)
     for (a, b), score in edge_scores.items():
         if score > 0:
             neighbor_map[a].add(b)
@@ -873,9 +876,9 @@ def analyze_corpus(input_dir: Path, output_file: Path) -> None:
 
     try:
         output_file.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-        logging.info(f"Interaction data successfully written to {output_file}")
-    except Exception as e:
-        logging.exception(f"Error writing JSON file {output_file}: {e}")
+        logger.info(f"Interaction data successfully written to {output_file}")
+    except Exception:
+        logger.exception(f"Error writing JSON file {output_file}")
         raise
 
 def main() -> None:
@@ -897,9 +900,9 @@ def main() -> None:
 
     try:
         analyze_corpus(args.input, args.output)
-        logging.info("Process completed.")
+        logger.info("Process completed.")
     except Exception as e:
-        logging.error(f"Failed to analyze corpus: {e}")
+        logger.error(f"Failed to analyze corpus: {e}")
         raise
 
 if __name__ == "__main__":
